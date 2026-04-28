@@ -1,0 +1,48 @@
+name: Production Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  create-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-lua
+            mingw-w64-ucrt-x86_64-cppwinrt
+
+      - name: Install PowerShell-Yaml Module
+        run: Install-Module -Name PowerShell-Yaml -Force -AllowClobber -Scope CurrentUser
+
+      - name: Build Project
+        shell: msys2 {0}
+        run: |
+          mingw32-make all LUA_ROOT="/ucrt64" CXX="g++"
+      - name: Run Release Script
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/release.ps1
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.zip
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

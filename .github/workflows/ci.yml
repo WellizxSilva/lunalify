@@ -1,0 +1,37 @@
+name: CI Build
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-make
+            mingw-w64-ucrt-x86_64-lua
+            mingw-w64-ucrt-x86_64-cppwinrt
+
+      - name: Compile Core DLL
+        shell: msys2 {0}
+        run: |
+          mingw32-make all LUA_ROOT="/ucrt64" CXX="g++"
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunalify-core-debug
+          path: bin/lunalify_core.dll

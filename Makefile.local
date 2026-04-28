@@ -1,0 +1,66 @@
+# Path to Lua installation (headers + libs)
+LUA_ROOT ?= V:/lua-5.4.8/lua-5.4.8
+# Path to MinGW toolchain binaries (compiler, linker, etc.)
+MINGW_BIN ?= V:/winlibs-x86_64-posix-seh-gcc-15.1.0-mingw-w64ucrt-13.0.0-r4/mingw64/bin
+# C++ compiler (g++ from MSYS2 UCRT64 environment)
+CXX ?= V:/msys64/ucrt64/bin/g++
+MSYS_INCLUDES ?= -I"V:/msys64/ucrt64/include" -I"V:/msys64/ucrt64/include/winrt"
+
+
+# Detect correct Lua library name automatically
+ifeq ($(wildcard $(LUA_ROOT)/lib/liblua.a),$(LUA_ROOT)/lib/liblua.a)
+    LUA_LIB = -llua
+else ifeq ($(wildcard $(LUA_ROOT)/lib/liblua54.a),$(LUA_ROOT)/lib/liblua54.a)
+    LUA_LIB = -llua54
+else ifeq ($(wildcard $(LUA_ROOT)/lib/liblua5.4.a),$(LUA_ROOT)/lib/liblua5.4.a)
+    LUA_LIB = -llua5.4
+else
+    $(error Could not find Lua library in $(LUA_ROOT)/lib)
+endif
+
+
+# Compiler flags
+CXXFLAGS = -O2 -std=c++20 -Wall -Wextra -fms-extensions -fpermissive \
+			-D_AMD64_ -DWIN64 -DWIN32_LEAN_AND_MEAN -DNOMINMAX \
+			-Iinclude -I"$(LUA_ROOT)/include" \
+			$(MSYS_INCLUDES)
+
+# Linker flags
+LDFLAGS = -shared -static -static-libgcc -static-libstdc++ \
+	-L"$(LUA_ROOT)/lib" $(LUA_LIB)  -lwindowsapp -lshell32 \
+	-lole32 -luuid -lshlwapi -lpropsys -lruntimeobject
+# Source files
+SRC = $(wildcard src/api/*.cpp src/api/lua/*.cpp src/app/*.cpp src/utils/*.cpp src/runtime/*.cpp src/runtime/notifications/*.cpp src/runtime/handlers/*.cpp src/*.cpp)
+
+# Object files
+OBJDIR = build
+OBJ = $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRC))
+# Output target
+TARGET = lunalify_core.dll
+BIN = bin
+
+
+all: $(BIN) $(TARGET)
+	@move /y $(TARGET) $(BIN) >nul
+
+release: all
+	@powershell -ExecutionPolicy Bypass -File scripts/release.ps1
+release-local: all
+	@powershell -ExecutionPolicy Bypass -File scripts/release.local.ps1
+
+$(BIN):
+	@if not exist $(BIN) mkdir $(BIN)
+
+$(TARGET): $(OBJ)
+	$(CXX) -o $@ $^ $(LDFLAGS)
+$(OBJDIR):
+	@if not exist $(OBJDIR) mkdir $(OBJDIR)
+
+$(OBJDIR)/%.o: %.cpp
+	@if not exist "$(dir $@)" mkdir "$(dir $@)"
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	@if exist $(OBJDIR) rmdir /s /q $(OBJDIR)
+	@if exist bin del /f /Q bin\*
+	@if exist dist rmdir /s /q dist
