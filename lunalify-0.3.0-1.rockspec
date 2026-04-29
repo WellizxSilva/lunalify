@@ -1,6 +1,6 @@
 rockspec_format = "3.0"
 package = "lunalify"
-version = "0.2.0-1"
+version = "0.3.0-1"
 
 source = {
    url = "git://github.com/WellizxSilva/lunalify.git",
@@ -45,5 +45,4 @@ build = {
    },
    copy_directories  = { "docs" }
 }
-
 

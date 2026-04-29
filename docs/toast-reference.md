@@ -114,7 +114,7 @@ To update a notification already on screen, call the `:update()` method on the `
 for i = 1, 100 do
     local p = i / 100
     progress_toast:update(p, "Processing...", math.floor(p*100) .. "%")
-    sleep(1) -- some sleep function
+    lunalify.kit.sleep(1000)
 end
 ```
 > [!WARNING]
@@ -172,7 +172,7 @@ lunalify.toast.create("Security", "Login attempt detected!")
     :fire(function(title, message, opts, dispatch)
         -- Example: Wait 5 seconds before firing
         print("Scheduling notification: " .. title)
-        sleep(5) -- some sleep function
+        lunalify.kit.sleep(5000)
         local id, err = dispatch(title, message, opts)
         
         if id then

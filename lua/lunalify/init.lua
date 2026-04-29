@@ -30,7 +30,10 @@ local registered_ids = lunalify._registered_ids
 --- Hook System
 local EventRegistry = {}
 
-lunalify._VERSION = "0.1.0"
+-- Global watchers for event listeners
+local global_watchers = {}
+
+lunalify._VERSION = "0.3.0"
 local info = debug.getinfo(1, "S")
 local script_path = info.source:sub(2):gsub("\\", "/")
 
@@ -527,6 +530,41 @@ function lunalify.kit.listen(callback)
         end
     end
     log("Event loop ended.")
+end
+
+--- Subscribe to an event and register a callback to be executed when the event is received.
+--- @param event_name string The name of the event to subscribe to
+--- @param callback function The function to call when the event is received
+function lunalify.kit.watch(event_name, callback)
+    if type(callback) ~= "function" then return end
+    global_watchers[event_name] = global_watchers[event_name] or {}
+    table.insert(global_watchers[event_name], callback)
+end
+
+--- Continuously poll for events from the Daemon and call registered callbacks.
+--- Should be called inside a timer or external loop.
+--- Under the hood, it uses the flag (Overlapped I/O in named pipes) to efficiently wait for events without busy-waiting.
+--- @param callback Lunalify.API.Listen.Callback? Function that will be called before each iteration to check if the loop should stop. (should return `false` to stop)
+function lunalify.kit.update(callback)
+    while true do
+        local ev = core.poll_event()
+        if not ev then break end
+        pcall(__bridge_event, ev) -- usage of pcall to ensure that bridge events don't crash the loop
+        local watchers = global_watchers[ev.event]
+        if watchers then
+            for _, cb in ipairs(watchers) do
+                pcall(cb, ev)
+            end
+        end
+        if callback and callback(ev) == false then break end
+    end
+end
+
+--- Sleep for a given number of milliseconds.
+--- @param ms number Milliseconds to sleep.
+--- Note: This is a helper function for standalone scripts, if you're using an GUI framework, you should use the framework's sleep function instead.
+function lunalify.kit.sleep(ms)
+    core.sleep(ms)
 end
 
 --- Shutdown the Lunalify kit and send a shutdown signal to the Daemon.

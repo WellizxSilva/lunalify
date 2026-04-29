@@ -46,7 +46,7 @@ all: $(BIN) $(TARGET)
 release: all
 	@powershell -ExecutionPolicy Bypass -File scripts/release.ps1
 release-local: all
-	@powershell -ExecutionPolicy Bypass -File scripts/release.local.ps1
+	@powershell -ExecutionPolicy Bypass -File scripts/release.local.ps1 $(FLAGS)
 
 $(BIN):
 	@if not exist $(BIN) mkdir $(BIN)
