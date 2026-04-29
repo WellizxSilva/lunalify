@@ -33,7 +33,7 @@ local EventRegistry = {}
 -- Global watchers for event listeners
 local global_watchers = {}
 
-lunalify._VERSION = "0.1.0"
+lunalify._VERSION = "0.3.0"
 local info = debug.getinfo(1, "S")
 local script_path = info.source:sub(2):gsub("\\", "/")
 

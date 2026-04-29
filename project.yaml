@@ -1,9 +1,9 @@
 project:
   name: lunalify
-  version: 0.2.0
+  version: 0.3.0
   author: "Wellington Silva"
   description: "Modern Windows Toast Notifications for lua"
-  release_name: lunalify-v0.2.0-win64
+  release_name: lunalify-v0.3.0-win64
   license: MIT
 
 build:

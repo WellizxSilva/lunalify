@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-29
+### Added
+- `Async Event Polling:` Introduced `kit.update(callback)` utilizing Windows Overlapped I/O, allowing non-blocking event processing within custom application loops (Games, Neovim, GUI).
+- `Global Event Monitoring:` Added `kit.watch(event, callback)` to allow persistent, global interception of specific event types across all notifications.
+- `Native Sleep Utility:` Implemented `kit.sleep(ms)` via a native C++ binding to the Windows `Sleep` API, enabling high-efficiency loop throttling with near-zero CPU usage.
+
+### Changed
+- `Bridge Safety:` Wrapped internal event dispatching in `pcall` to ensure that faulty user callbacks do not crash the main event loop.
+
+
 ## [0.2.0] - 2026-04-28
 ### Added
 - `Packet-Based Protocol:` Introduced `PacketHeader` with a Magic Number `(0x4C4E464C)` to ensure data integrity and protocol alignment between the Bridge and the Daemon.
