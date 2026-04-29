@@ -3,6 +3,30 @@
 
 namespace Lunalify::API {
 
+struct AsyncEventData {
+    OVERLAPPED overlapped;
+    HANDLE hEvent;
+    bool pending;
+    char buffer[8192];
+
+    AsyncEventData() : hEvent(NULL), pending(false) {
+        ZeroMemory(&overlapped, sizeof(OVERLAPPED));
+        /*
+         * Create the event object for overlapped I/O completion
+         *  (ensures event is valid while context exists)
+         */
+        hEvent = CreateEventW(NULL, TRUE, FALSE, NULL);
+        overlapped.hEvent = hEvent;
+    }
+
+    ~AsyncEventData() {
+        if (hEvent) {
+           CloseHandle(hEvent);
+            hEvent = NULL;
+        }
+    }
+};
+
 class Context {
 public:
     static Context& Get() {
@@ -31,9 +55,11 @@ public:
         if (m_cmdPipe != INVALID_HANDLE_VALUE) CloseHandle(m_cmdPipe);
         m_cmdPipe = hPipe;
     }
+    AsyncEventData* GetAsyncData() { return &m_asyncData; }
     void ResetCmdPipe() {
         if (m_cmdPipe != INVALID_HANDLE_VALUE) CloseHandle(m_cmdPipe);
         m_cmdPipe = INVALID_HANDLE_VALUE;
+        m_asyncData.pending = false;
     }
 
 private:
@@ -44,6 +70,7 @@ private:
     HINSTANCE m_hInst;
     HANDLE m_eventPipe;
     HANDLE m_cmdPipe;
+    AsyncEventData m_asyncData;
 };
 
 }

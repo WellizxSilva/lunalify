@@ -8,6 +8,7 @@
 #include "lunalify/runtime/orchestrator.hpp"
 #include "lunalify/runtime/notifications/notifier.hpp"
 #include "lunalify/runtime/handlers/handle_daemon.hpp"
+#include "lunalify/api/lua/event_invoker.hpp"
 #include "winnt.h"
 
 using namespace Lunalify::App;
@@ -222,6 +223,58 @@ namespace Lunalify::API::Lua::Invokers {
         return 1;
     }
 
+    static int l_poll_event(lua_State* L) {
+        auto& ctx = Lunalify::API::Context::Get();
+        auto* ad = ctx.GetAsyncData();
+        HANDLE hPipe = ctx.GetEventPipe();
+
+        if (hPipe == INVALID_HANDLE_VALUE) {
+            hPipe = CreateFileW(
+                Lunalify::Protocol::EVENT_PIPE_NAME,
+                GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                // Usage of overlapped I/O (essential for non-blocking)
+                FILE_FLAG_OVERLAPPED,
+                NULL
+            );
+
+            if (hPipe == INVALID_HANDLE_VALUE) {
+                lua_pushnil(L);
+                return 1;
+            }
+            ctx.SetEventPipe(hPipe);
+        }
+
+        if (!ad->pending) {
+            ResetEvent(ad->hEvent);
+            DWORD bytesRead = 0;
+            BOOL result = ReadFile(hPipe, ad->buffer, sizeof(ad->buffer), &bytesRead, &ad->overlapped);
+
+            if (!result && GetLastError() == ERROR_IO_PENDING) {
+                ad->pending = true;
+            } else if (result && bytesRead > 0) {
+                return Lunalify::API::Lua::Invokers::PushEvent(L, ad->buffer, bytesRead);
+            } else {
+                ctx.ResetEventPipe();
+                lua_pushnil(L);
+                return 1;
+            }
+        }
+
+        // WAIT_OBJECT_0 means the buffer is full (Windows signaled)
+        if (WaitForSingleObject(ad->hEvent, 0) == WAIT_OBJECT_0) {
+            DWORD bytesRead = 0;
+            if (GetOverlappedResult(hPipe, &ad->overlapped, &bytesRead, FALSE)) {
+                ad->pending = false;
+                return Lunalify::API::Lua::Invokers::PushEvent(L, ad->buffer, bytesRead);
+            } else {
+                ctx.ResetEventPipe();
+                ad->pending = false; // (inside this case, probably the pipe was closed, so we reset the pipe)
+            }
+        }
+        lua_pushnil(L);
+        return 1;
+    }
+
     static int l_update_toast(lua_State* L) {
         ToastUpdate data;
         Mapper::FillUpdate(L, 1, data);
@@ -310,6 +363,7 @@ extern "C" __declspec(dllexport) int luaopen_lunalify_core(lua_State* L) {
         {"toast",      l_send_toast},
         {"update_toast", l_update_toast},
         {"wait_event", l_wait_event},
+        {"poll_event",  l_poll_event},
         {"set_logger", l_set_logger},
         {"shutdown",   l_shutdown},
         {NULL, NULL}
