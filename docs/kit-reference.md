@@ -87,6 +87,21 @@ end
 Sends a termination signal (`EXIT`) to the Daemon and closes all open named pipes. 
 > **Note:** `Lunalify` uses *Windows Job Objects* to automatically kill the Daemon if the parent Lua process crashes. However, calling shutdown() manually before exiting your script is the strictly recommended practice for a clean exit.
 
+### `lunalify.kit.sleep(ms)`
+Suspends the execution of the current Lua thread for a specified number of milliseconds. This is a `native binding` to the Windows `Sleep` API, meaning it consumes `0% CPU while waiting`, unlike busy-wait loops.
+  - `ms` (number): The time to sleep in milliseconds (1 second = 1000ms).
+
+> [!TIP]
+`Note:` This is a helper function designed primarily for standalone or CLI scripts. If you are using an external GUI framework (like `Qt`, `LÖVE`, or `Neovim`), you should use the framework's native timer/sleep functions instead to avoid blocking the event loop of the UI.
+```lua
+while app_running do
+    lunalify.kit.update()
+    
+    -- Using the native sleep to keep CPU usage near zero
+    lunalify.kit.sleep(10) 
+end
+```
+
 ---
 
 ## Event Handling
@@ -100,12 +115,48 @@ This is the recommended way to handle interactions. It pauses the script executi
 lunalify.kit.listen(function(ev)
     print("Global Event Intercepted: " .. ev.event)
     
-    -- Stop the script if the toast was dismissed
+    -- Stop the loop if the toast was dismissed
     if ev.event == "dismissed" then
         return false 
     end
 end)
 ```
+
+### 2. `lunalify.kit.update(callback)`
+**Mode:** Non-Blocking (Asynchronous).
+Processes all pending events in the communication buffer using **Overlapped I/O**. This function must be called repeatedly within your own Main Loop or via a high-frequency timer.
+
+- **Advantage:** Allows your script to continue executing other tasks (animations, game logic, background processing) while waiting for user interactions.
+- **Usage:** Should be called frequently (e.g., every 10ms to 100ms) to ensure responsiveness.
+
+- **callback:** (function, optional): A function called for each event retrieved in the current batch. If the callback returns `false`, `update()` will stop processing further events in the buffer and return immediately, even if more events are pending.
+```lua
+-- Example usage in a custom loop
+while my_app_running do
+    lunalify.kit.update(function(ev)
+        -- Stop the loop if the toast was dismissed
+        if ev.event == 'dismissed' then
+            return false
+        end
+    end)
+    -- Always use a sleep to prevent 100% CPU usage in while loops
+    lunalify.kit.sleep(16)
+end
+```
+
+### 3. `lunalify.kit.watch(event_name, callback)`
+- **Mode:** Asynchronous / Global Monitor.
+Registers a global observer for a specific event type. Unlike `toast:on()`, watchers registered here are persistent and will trigger for every notification processed by the framework.
+- **event_name** (string): `"activated"`, `"dismissed"`, or `"failed"`.
+- **callback** (function): Receives the full `ev` object.
+```lua
+-- Useful for global logic
+lunalify.kit.watch("failed", function(ev)
+    print("ALERT: Notification " .. ev.id .. " has failed!")
+end)
+```
+
+---
 
 ## The Event Object
 Whether intercepted globally via `kit.listen(ev)` or handled locally via `toast:on("event", function(args))`, the core event data contains:
