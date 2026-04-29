@@ -347,6 +347,13 @@ namespace Lunalify::API::Lua::Invokers {
         lua_pushboolean(L, success);
         return 1;
     }
+
+    static int l_sleep(lua_State* L) {
+        int ms = static_cast<int>(luaL_checkinteger(L, 1));
+        if (ms < 0) ms = 0;
+        Sleep(ms);
+        return 0;
+    }
 }
 
 extern "C" __declspec(dllexport) int luaopen_lunalify_core(lua_State* L) {
@@ -366,6 +373,7 @@ extern "C" __declspec(dllexport) int luaopen_lunalify_core(lua_State* L) {
         {"poll_event",  l_poll_event},
         {"set_logger", l_set_logger},
         {"shutdown",   l_shutdown},
+        {"sleep",      l_sleep},
         {NULL, NULL}
     };
 

@@ -560,6 +560,13 @@ function lunalify.kit.update(callback)
     end
 end
 
+--- Sleep for a given number of milliseconds.
+--- @param ms number Milliseconds to sleep.
+--- Note: This is a helper function for standalone scripts, if you're using an GUI framework, you should use the framework's sleep function instead.
+function lunalify.kit.sleep(ms)
+    core.sleep(ms)
+end
+
 --- Shutdown the Lunalify kit and send a shutdown signal to the Daemon.
 --- - It's highly recommended to call this function before exiting your application.
 function lunalify.kit.shutdown()
