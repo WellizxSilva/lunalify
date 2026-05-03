@@ -24,7 +24,7 @@ try {
 # Project Metadata
 $projectName    = $config.project.name
 $version        = $config.project.version
-$releaseName    = $config.project.release_name # Usando o release_name fixo do seu YAML
+$releaseName    = $config.project.release_name
 
 # Build & Paths
 $targetDll      = $config.build.target
